@@ -28,60 +28,25 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
     public static final String LOG_TAG = MainActivity.class.getName();
     private static final int BOOK_LOADER_ID = 1;
     private TextView mEmptyStateTextView;
+    private String mUserInput;
     private ProgressBar progress;
+    private ListView bookListView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        //Find the Button object
-        searchButton = (ImageButton) findViewById(R.id.search_button);
-
-        //Search Button action
-        searchButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                searchText = (EditText) findViewById(R.id.search_text);
-                String userInput = searchText.getText().toString();
-                if (userInput.isEmpty()) {
-                    Context context = getApplicationContext();
-                    CharSequence text = "Nothing Entered in Search";
-                    int duration = Toast.LENGTH_SHORT;
-                    Toast toast = Toast.makeText(context, text, duration);
-                    toast.show();
-
-                    //Exits the method early because nothing else is needed
-                    return;
-
-                } else {
-                    userInput = userInput.replaceAll(" ", "%20");
-                    mRequestUrl = "https://www.googleapis.com/books/v1/volumes?q=" + userInput + "&maxResults=10";
-                }
-                // Get a reference to the LoaderManager, in order to interact with loaders.
-                LoaderManager loaderManager = getLoaderManager();
-                loaderManager.restartLoader(BOOK_LOADER_ID, null, MainActivity.this);
-                Log.v("Context", mRequestUrl);
-            }
-        });
-
         // Find a reference to the {@link ListView} in the layout
-        ListView bookListView = (ListView) findViewById(R.id.list);
+        bookListView = (ListView) findViewById(R.id.list);
 
         mEmptyStateTextView = (TextView) findViewById(R.id.empty_view);
         bookListView.setEmptyView(mEmptyStateTextView);
 
-        ConnectivityManager cm =
-                (ConnectivityManager) this.getSystemService(Context.CONNECTIVITY_SERVICE);
-
-        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-        boolean isConnected = activeNetwork != null &&
-                activeNetwork.isConnectedOrConnecting();
-
         progress = (ProgressBar) findViewById(R.id.progress_bar);
-        if (!isConnected) {
+        if (!checkNetworkActivity()) {
             progress.setVisibility(View.GONE);
-            mEmptyStateTextView.setText("No internet connection");
+            mEmptyStateTextView.setText(R.string.no_connection);
         } else {
             // Create a new {@link ArrayAdapter} of books
             mAdapter = new BookAdapter(this, new ArrayList<Book>());
@@ -98,10 +63,56 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
             // because this activity implements the LoaderCallbacks interface).
             loaderManager.initLoader(BOOK_LOADER_ID, null, this);
         }
+
+
+        //Find the Button object
+        searchButton = (ImageButton) findViewById(R.id.search_button);
+
+        //Search Button action
+        searchButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                //bookListView.setVisibility(View.GONE);
+                mEmptyStateTextView.setText(null); //Sets emptyText to null so that progress loader doesn't overlay emptyText
+                mAdapter.clear(); //Clears adapter so progress loader doesn't overlay the last search results
+                if (!checkNetworkActivity()) {
+                    progress.setVisibility(View.GONE);
+                    mEmptyStateTextView.setText(R.string.no_connection);
+                } else {
+                    searchText = (EditText) findViewById(R.id.search_text);
+                    String userInput = searchText.getText().toString();
+                    if (userInput.isEmpty()) {
+                        Context context = getApplicationContext();
+                        CharSequence text = "Nothing Entered in Search";
+                        int duration = Toast.LENGTH_SHORT;
+                        Toast toast = Toast.makeText(context, text, duration);
+                        toast.show();
+
+                        //Exits the method early because nothing else is needed
+                        return;
+
+                    } else {
+                        mUserInput = userInput.replaceAll(" ", "%20");
+                        mRequestUrl = "https://www.googleapis.com/books/v1/volumes?q=" + mUserInput + "&maxResults=10";
+                    }
+                    // Get a reference to the LoaderManager, in order to interact with loaders.
+                    LoaderManager loaderManager = getLoaderManager();
+                    loaderManager.restartLoader(BOOK_LOADER_ID, null, MainActivity.this);
+                    Log.v("Context", mRequestUrl);
+                }
+            }
+        });
+    }
+
+    protected boolean checkNetworkActivity() {
+        ConnectivityManager cm = (ConnectivityManager) this.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+        return activeNetwork != null && activeNetwork.isConnectedOrConnecting();
     }
 
     @Override
     public Loader<List<Book>> onCreateLoader(int i, Bundle bundle) {
+        progress.setVisibility(View.VISIBLE);
         Log.v("Loader", "onCreateLoader");
         // Create a new loader for the given URL
         return new BookLoader(this, mRequestUrl);
@@ -110,9 +121,14 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
     @Override
     public void onLoadFinished(Loader<List<Book>> loader, List<Book> books) {
         progress.setVisibility(View.GONE);
+        //bookListView.setVisibility(View.VISIBLE);
 
         //Set empty state text
         mEmptyStateTextView.setText(R.string.no_books);
+
+        if (mUserInput == null) {
+            mEmptyStateTextView.setText(R.string.instructions);
+        }
 
         Log.v("Loader", "onLoadFinished");
         // Clear the adapter of previous book data

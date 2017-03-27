@@ -18,13 +18,14 @@
 
             <EditText
                 android:id="@+id/search_text"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:hint="@string/search_hint" />
 
             <ImageButton
                 android:id="@+id/search_button"
+                android:contentDescription="@string/search_hint"
                 android:layout_width="wrap_content"
                 android:layout_height="44dp"
                 android:src="@android:drawable/ic_menu_search" />
@@ -41,7 +42,8 @@
         android:id="@+id/empty_view"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_centerInParent="true" />
+        android:layout_margin="16dp"
+        android:layout_centerInParent="true"/>
 
     <ProgressBar
         android:id="@+id/progress_bar"
